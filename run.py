@@ -9,27 +9,39 @@ def GetClients(options):
 def AnalyzeClients(clients):
     for client in clients:
         if client['status'] and client['ssid'] != None:
-            channel = CheckChannel(client)
+            channel = AnalyzeEvents(client)
             if channel == '666':
                 print("Error - Not sure which channel client %s (ID: %s) is connected to" % (client['description'], client['id']))
                 clients_error.append(client)
             elif int(channel) < 15:
+                print('Client {:<40} ( Id: {:<8}) is on channel {:<3}'.format(str(client['description']), client['id'], channel))
                 clients_2.append(client)
             else:
+                print('Client {:<40} ( Id: {:<8}) is on channel {:<3}'.format(str(client['description']), client['id'], channel))
                 clients_5.append(client)
 
-def CheckChannel(client):
+def AnalyzeEvents(client):
+    per_page = 100
     clientEvents_options = {
         'network_id': NETWORK_ID, 
         'client_id': client['id'], 
-        'per_page': 20
+        'per_page': per_page,
+        'timespan': 3600
         }
-    clientEvents = meraki.clients.get_network_client_events(clientEvents_options)
-    
-    for event in clientEvents:
+    isLastPage = False
+    channel = '666'
+    while isLastPage == False:
+        clientEvents = meraki.clients.get_network_client_events(clientEvents_options)
+        if len(clientEvents) < per_page:
+            isLastPage = True
+        else:
+            clientEvents_options['starting_after'] = clientEvents[per_page - 1]['occurredAt']
+        channel = GetChannel(client, clientEvents)
+    return(channel)
+
+def GetChannel(client, events):
+    for event in events:
         if 'channel' in event['details'].keys():
-            #print('Client %s (Id: %s) is on channel %s' % (client['description'], client['id'], event['details']['channel']))
-            print('Client {:<40} ( Id: {:<8}) is on channel {:<3}'.format(client['description'], client['id'], event['details']['channel']))
             return(event['details']['channel'])
     return('666') 
 
@@ -54,15 +66,23 @@ while isLastPage == False:
     print('\nReceived %s clients\n' % len(clients))
     if len(clients) < per_page:
         isLastPage = True
+    else:
+        clients_options['starting_after'] = clients[per_page - 1]['id']
     AnalyzeClients(clients)
-
+    
 wirelessClientCount = len(clients_5) + len(clients_2) + len(clients_error)
-print('''
+
+clients_2_num = len(clients_2)
+clients_5_num = len(clients_5)
+clients_error_num = len(clients_error)
+clients_2_percent = round(len(clients_2)*100/wirelessClientCount)
+clients_5_percent = round(len(clients_5)*100/wirelessClientCount)
+clients_error_percent = round(len(clients_error)*100/wirelessClientCount)
+print(f'''
 
 
 Summary:
-There is a total of %s clients in 2.4GHz = %s %.
-There is a total of %s clients in 5GHz = %s %.
-There is a total of %s channel unknown = %s %.
-''' % (len(clients_2), round(len(clients_2)*100/wirelessClientCount), len(clients_5), 
-    round(len(clients_5)*100/wirelessClientCount), len(clients_error), round(len(clients_error)*100/wirelessClientCount)))
+There is a total of {clients_2_num} clients in 2.4GHz = {clients_2_percent} %.
+There is a total of {clients_5_num} clients in 5GHz = {clients_5_percent} %.
+There is a total of {clients_error_num} channel unknown = {clients_error_percent} %.
+''' )
