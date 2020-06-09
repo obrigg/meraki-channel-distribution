@@ -2,25 +2,43 @@ from config import *
 from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 from meraki_sdk.exceptions.api_exception import APIException
 
-def GetClients(options):
-    clients = meraki.clients.get_network_clients(clients_options)
-    return(clients)
+def GetAllClients():
+    # Fetch {per_page} clients in the past 1 hour (3,600 seconds)
+    allClients = []
+    per_page = 100
+    isLastPage = False
+    clients_options = {
+    'network_id': NETWORK_ID, 
+    'timespan': 3600, 
+    'per_page': per_page
+    }
+    while isLastPage == False:
+        newClients = meraki.clients.get_network_clients(clients_options)
+        allClients += newClients
+        if len(newClients) < per_page:
+            isLastPage = True
+        else:
+            if isDebug:
+                print('\nReceived %s clients so far - going for more\n' % len(allClients))
+            clients_options['starting_after'] = newClients[per_page - 1]['id']
+    return(allClients)
 
-def AnalyzeClients(clients):
-    for client in clients:
-        if client['status'] and client['ssid'] != None:
-            channel = AnalyzeEvents(client)
-            if channel == '666':
-                print("Error - Not sure which channel client %s (ID: %s) is connected to" % (client['description'], client['id']))
-                clients_error.append(client)
-            elif int(channel) < 15:
-                print('Client {:<40} ( Id: {:<8}) is on channel {:<3}'.format(str(client['description']), client['id'], channel))
-                clients_2.append(client)
-            else:
-                print('Client {:<40} ( Id: {:<8}) is on channel {:<3}'.format(str(client['description']), client['id'], channel))
-                clients_5.append(client)
+def AnalyzeClient(client):
+    if client['status'] and client['ssid'] != None:
+        events = GetClientEvents(client)
+        channel = GetChannel(client, events)
+        if channel == '666':
+            print("Error - Not sure which channel client %s (ID: %s) is connected to" % (str(client['description']), client['id']))
+            clients_error.append(client)
+        elif int(channel) < 15:
+            print('Client {:<40} ( Id: {:<8}) is on channel {:<3}'.format(str(client['description']), client['id'], channel))
+            clients_2.append(client)
+        else:
+            print('Client {:<40} ( Id: {:<8}) is on channel {:<3}'.format(str(client['description']), client['id'], channel))
+            clients_5.append(client)
 
-def AnalyzeEvents(client):
+def GetClientEvents(client):
+    allEvents = []
     per_page = 100
     clientEvents_options = {
         'network_id': NETWORK_ID, 
@@ -29,46 +47,42 @@ def AnalyzeEvents(client):
         'timespan': 3600
         }
     isLastPage = False
-    channel = '666'
     while isLastPage == False:
         clientEvents = meraki.clients.get_network_client_events(clientEvents_options)
+        allEvents += clientEvents
         if len(clientEvents) < per_page:
             isLastPage = True
         else:
+            if isDebug:
+                print(f'Client: %s has %s events so far - more coming' % (str(client['description']), len(allEvents)))
             clientEvents_options['starting_after'] = clientEvents[per_page - 1]['occurredAt']
-        channel = GetChannel(client, clientEvents)
-    return(channel)
+    if isDebug:
+        print(f'Client: %s has a total of %s events' % (str(client['description']), len(allEvents)))
+    return(allEvents)
 
 def GetChannel(client, events):
+    channel = '666'
     for event in events:
         if 'channel' in event['details'].keys():
-            return(event['details']['channel'])
-    return('666') 
+            channel = event['details']['channel']
+            if isDebug:
+                print(f'Channel: {channel}')
+    return(channel) 
 
+# Debug mode
+isDebug = True
 # Initializing Meraki SDK
 meraki = MerakiSdkClient(MERAKI_KEY)
 
-# Fetch {per_page} clients in the past 1 hour (3,600 seconds)
-per_page = 100
-isLastPage = False
 clients_2 = []
 clients_5 = []
 clients_error = []
-
-clients_options = {
-    'network_id': NETWORK_ID, 
-    'timespan': 3600, 
-    'per_page': per_page
-    }
-
-while isLastPage == False:
-    clients = GetClients(clients_options)
-    print('\nReceived %s clients\n' % len(clients))
-    if len(clients) < per_page:
-        isLastPage = True
-    else:
-        clients_options['starting_after'] = clients[per_page - 1]['id']
-    AnalyzeClients(clients)
+allClients = GetAllClients()
+print('\nReceived a total of %s clients\n' % len(allClients))
+for client in allClients:
+    if isDebug:
+        print(f'Analyzing client:\n{client}')
+    AnalyzeClient(client)
     
 wirelessClientCount = len(clients_5) + len(clients_2) + len(clients_error)
 
