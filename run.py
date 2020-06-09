@@ -1,3 +1,4 @@
+import time
 from config import *
 from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 from meraki_sdk.exceptions.api_exception import APIException
@@ -19,7 +20,7 @@ def GetAllClients():
             isLastPage = True
         else:
             if isDebug:
-                print('\nReceived %s clients so far - going for more\n' % len(allClients))
+                print('Received %s clients so far. Fetching more...' % len(allClients))
             clients_options['starting_after'] = newClients[per_page - 1]['id']
     return(allClients)
 
@@ -36,6 +37,8 @@ def AnalyzeClient(client):
         else:
             print('Client {:<40} ( Id: {:<8}) is on channel {:<3}'.format(str(client['description']), client['id'], channel))
             clients_5.append(client)
+    elif isDebug:
+        print(f'Client %s is not a wireless client. Skipping...\n' % str(client['description']))
 
 def GetClientEvents(client):
     allEvents = []
@@ -44,17 +47,20 @@ def GetClientEvents(client):
         'network_id': NETWORK_ID, 
         'client_id': client['id'], 
         'per_page': per_page,
-        'timespan': 3600
+        'starting_after': time.time() - 60*60*5 # Fetching logs 5 hours back.
         }
     isLastPage = False
     while isLastPage == False:
-        clientEvents = meraki.clients.get_network_client_events(clientEvents_options)
-        allEvents += clientEvents
+        try:
+            clientEvents = meraki.clients.get_network_client_events(clientEvents_options)
+            allEvents += clientEvents
+        except ValueError as e:
+            print(f'Error: {e}')
         if len(clientEvents) < per_page:
             isLastPage = True
         else:
             if isDebug:
-                print(f'Client: %s has %s events so far - more coming' % (str(client['description']), len(allEvents)))
+                print(f'Client: %s has %s events so far. Fetching more...' % (str(client['description']), len(allEvents)))
             clientEvents_options['starting_after'] = clientEvents[per_page - 1]['occurredAt']
     if isDebug:
         print(f'Client: %s has a total of %s events' % (str(client['description']), len(allEvents)))
@@ -65,8 +71,8 @@ def GetChannel(client, events):
     for event in events:
         if 'channel' in event['details'].keys():
             channel = event['details']['channel']
-            if isDebug:
-                print(f'Channel: {channel}')
+            #if isDebug:
+                #print(f'Channel: {channel}')
     return(channel) 
 
 # Debug mode
@@ -78,11 +84,15 @@ clients_2 = []
 clients_5 = []
 clients_error = []
 allClients = GetAllClients()
+counter = 0
 print('\nReceived a total of %s clients\n' % len(allClients))
 for client in allClients:
+    counter += 1
     if isDebug:
-        print(f'Analyzing client:\n{client}')
+        print(f'Analyzing client %s of %s:\n{client}' % (counter, len(allClients)))
+        print('Status: 5G - %s, 2.4G - %s, unknown - %s' % (len(clients_5), len(clients_2), len(clients_error)))
     AnalyzeClient(client)
+    
     
 wirelessClientCount = len(clients_5) + len(clients_2) + len(clients_error)
 
