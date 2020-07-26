@@ -2,6 +2,32 @@ import time
 from config import *
 from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 from meraki_sdk.exceptions.api_exception import APIException
+from pprint import pprint
+
+def SelectNetwork():
+    # Fetch and select the organization
+    print('Fetching organizations...')
+    organizations = meraki.organizations.get_organizations()
+    ids = []
+    print('{:<30} {:<20}'.format('ID: ', 'Name: '))
+    for organization in organizations:
+        print('{:<30} {:<20}'.format(organization['id'],organization['name']))
+        ids.append(organization['id'])
+    selected = input('Kindly select the organization ID you would like to query: ')
+    if selected not in ids:
+        raise Exception ('Invalid Organization ID')
+    # Fetch and select the network within the organization
+    print('Fetching networks...')
+    networks = meraki.networks.get_organization_networks({'organization_id': selected})
+    ids = []
+    print('{:<30} {:<20}'.format('ID: ', 'Name: '))
+    for network in networks:
+        print('{:<30} {:<20}'.format(network['id'],network['name']))
+        ids.append(network['id'])
+    selected = input('Kindly select the network ID you would like to query: ')
+    if selected not in ids:
+        raise Exception ('Invalid Network ID')
+    return(selected)
 
 def GetAllClients():
     # Fetch {per_page} clients in the past 1 hour (3,600 seconds)
@@ -9,8 +35,8 @@ def GetAllClients():
     per_page = 100
     isLastPage = False
     clients_options = {
-    'network_id': NETWORK_ID, 
-    'timespan': 3600, 
+    'network_id': NETWORK_ID,
+    'timespan': 3600,
     'per_page': per_page
     }
     while isLastPage == False:
@@ -44,8 +70,8 @@ def GetClientEvents(client):
     allEvents = []
     per_page = 100
     clientEvents_options = {
-        'network_id': NETWORK_ID, 
-        'client_id': client['id'], 
+        'network_id': NETWORK_ID,
+        'client_id': client['id'],
         'per_page': per_page,
         'starting_after': time.time() - 60*60*5 # Fetching logs 5 hours back.
         }
@@ -73,12 +99,13 @@ def GetChannel(client, events):
             channel = event['details']['channel']
             #if isDebug:
                 #print(f'Channel: {channel}')
-    return(channel) 
+    return(channel)
 
 # Debug mode
-isDebug = True
+isDebug = False
 # Initializing Meraki SDK
 meraki = MerakiSdkClient(MERAKI_KEY)
+NETWORK_ID = SelectNetwork()
 
 clients_2 = []
 clients_5 = []
@@ -92,8 +119,8 @@ for client in allClients:
         print(f'Analyzing client %s of %s:\n{client}' % (counter, len(allClients)))
         print('Status: 5G - %s, 2.4G - %s, unknown - %s' % (len(clients_5), len(clients_2), len(clients_error)))
     AnalyzeClient(client)
-    
-    
+
+
 wirelessClientCount = len(clients_5) + len(clients_2) + len(clients_error)
 
 clients_2_num = len(clients_2)
@@ -102,8 +129,13 @@ clients_error_num = len(clients_error)
 clients_2_percent = round(len(clients_2)*100/wirelessClientCount)
 clients_5_percent = round(len(clients_5)*100/wirelessClientCount)
 clients_error_percent = round(len(clients_error)*100/wirelessClientCount)
-print(f'''
 
+print("Unknown clients:")
+print('{:<20} {:<18} {:<20}'.format('description', 'ip', 'ssid'))
+for client_error in clients_error:
+    print('{:<20} {:<18} {:<20}'.format(client_error['description'], client_error['ip'], client_error['ssid']))
+
+print(f'''
 
 Summary:
 There is a total of {clients_2_num} clients in 2.4GHz = {clients_2_percent} %.
