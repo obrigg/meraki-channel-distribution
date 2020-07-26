@@ -2,6 +2,7 @@ import time
 from config import *
 from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 from meraki_sdk.exceptions.api_exception import APIException
+from pprint import pprint
 
 def GetAllClients():
     # Fetch {per_page} clients in the past 1 hour (3,600 seconds)
@@ -9,8 +10,8 @@ def GetAllClients():
     per_page = 100
     isLastPage = False
     clients_options = {
-    'network_id': NETWORK_ID, 
-    'timespan': 3600, 
+    'network_id': NETWORK_ID,
+    'timespan': 3600,
     'per_page': per_page
     }
     while isLastPage == False:
@@ -44,8 +45,8 @@ def GetClientEvents(client):
     allEvents = []
     per_page = 100
     clientEvents_options = {
-        'network_id': NETWORK_ID, 
-        'client_id': client['id'], 
+        'network_id': NETWORK_ID,
+        'client_id': client['id'],
         'per_page': per_page,
         'starting_after': time.time() - 60*60*5 # Fetching logs 5 hours back.
         }
@@ -73,10 +74,10 @@ def GetChannel(client, events):
             channel = event['details']['channel']
             #if isDebug:
                 #print(f'Channel: {channel}')
-    return(channel) 
+    return(channel)
 
 # Debug mode
-isDebug = True
+isDebug = False
 # Initializing Meraki SDK
 meraki = MerakiSdkClient(MERAKI_KEY)
 
@@ -92,8 +93,8 @@ for client in allClients:
         print(f'Analyzing client %s of %s:\n{client}' % (counter, len(allClients)))
         print('Status: 5G - %s, 2.4G - %s, unknown - %s' % (len(clients_5), len(clients_2), len(clients_error)))
     AnalyzeClient(client)
-    
-    
+
+
 wirelessClientCount = len(clients_5) + len(clients_2) + len(clients_error)
 
 clients_2_num = len(clients_2)
@@ -102,8 +103,12 @@ clients_error_num = len(clients_error)
 clients_2_percent = round(len(clients_2)*100/wirelessClientCount)
 clients_5_percent = round(len(clients_5)*100/wirelessClientCount)
 clients_error_percent = round(len(clients_error)*100/wirelessClientCount)
-print(f'''
 
+print("Unknown clients:")
+for client_error in clients_error:
+    pprint(client_error)
+
+print(f'''
 
 Summary:
 There is a total of {clients_2_num} clients in 2.4GHz = {clients_2_percent} %.
