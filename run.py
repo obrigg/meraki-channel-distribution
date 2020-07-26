@@ -4,6 +4,31 @@ from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 from meraki_sdk.exceptions.api_exception import APIException
 from pprint import pprint
 
+def SelectNetwork():
+    # Fetch and select the organization
+    print('Fetching organizations...')
+    organizations = meraki.organizations.get_organizations()
+    ids = []
+    print('{:<30} {:<20}'.format('ID: ', 'Name: '))
+    for organization in organizations:
+        print('{:<30} {:<20}'.format(organization['id'],organization['name']))
+        ids.append(organization['id'])
+    selected = input('Kindly select the organization ID you would like to query: ')
+    if selected not in ids:
+        raise Exception ('Invalid Organization ID')
+    # Fetch and select the network within the organization
+    print('Fetching networks...')
+    networks = meraki.networks.get_organization_networks({'organization_id': selected})
+    ids = []
+    print('{:<30} {:<20}'.format('ID: ', 'Name: '))
+    for network in networks:
+        print('{:<30} {:<20}'.format(network['id'],network['name']))
+        ids.append(network['id'])
+    selected = input('Kindly select the network ID you would like to query: ')
+    if selected not in ids:
+        raise Exception ('Invalid Network ID')
+    return(selected)
+
 def GetAllClients():
     # Fetch {per_page} clients in the past 1 hour (3,600 seconds)
     allClients = []
@@ -80,6 +105,7 @@ def GetChannel(client, events):
 isDebug = False
 # Initializing Meraki SDK
 meraki = MerakiSdkClient(MERAKI_KEY)
+NETWORK_ID = SelectNetwork()
 
 clients_2 = []
 clients_5 = []
@@ -105,8 +131,9 @@ clients_5_percent = round(len(clients_5)*100/wirelessClientCount)
 clients_error_percent = round(len(clients_error)*100/wirelessClientCount)
 
 print("Unknown clients:")
+print('{:<20} {:<18} {:<20}'.format('description', 'ip', 'ssid'))
 for client_error in clients_error:
-    pprint(client_error)
+    print('{:<20} {:<18} {:<20}'.format(client_error['description'], client_error['ip'], client_error['ssid']))
 
 print(f'''
 
