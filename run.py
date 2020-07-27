@@ -150,21 +150,21 @@ if __name__ == '__main__':
 
     input('Press any key to get a list of 5GHz capable clients on 2.4GHz... ')
     print("\n5GHz capable clients on 2.4GHz:")
-    print('{:<25} {:<18} {:<20}'.format('Description', 'IP Address', 'SSID'))
-    for client_error in clients_error:
-        if client_error['ip'] is None:
-            client_error['ip'] = 'No IP'
-        if client_error['description'] is None:
-            client_error['description'] = 'No description'
-        print('{:<25} {:<18} {:<20}'.format(client_error['description'], client_error['ip'], client_error['ssid']))
+    print('{:<20} {:<18} {:<25}'.format('SSID', 'IP Address', 'Description'))
+    for client in clients_5_on_2:
+        if client['ip'] is None:
+            client['ip'] = 'No IP'
+        if client['description'] is None:
+            client['description'] = 'No description'
+        print('{:<20} {:<18} {:<25}'.format(client['ssid'], client['ip'], client['description']))
 
     input('Press any key to get a list of the unknown clients... ')
     print("\n\nUnknown clients:")
-    print('{:<25} {:<18} {:<20}'.format('Description', 'IP Address', 'SSID'))
-    for client_error in clients_error:
-        if client_error['ip'] is None:
-            client_error['ip'] = 'No IP'
-        if client_error['description'] is None:
-            client_error['description'] = 'No description'
-        print('{:<25} {:<18} {:<20}'.format(client_error['description'], client_error['ip'], client_error['ssid']))
+    print('{:<20} {:<18} {:<25}'.format('SSID', 'IP Address', 'Description'))
+    for client in clients_error:
+        if client['ip'] is None:
+            client['ip'] = 'No IP'
+        if client['description'] is None:
+            client['description'] = 'No description'
+        print('{:<25} {:<18} {:<20}'.format(client['ssid'], client['ip'], client['description']))
         
