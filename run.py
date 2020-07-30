@@ -100,6 +100,13 @@ def GetClientEvents(client):
     return(allEvents)
 
 def GetChannel(client, events):
+    # The dashboard API does not have a direct query to the channel a client is
+    # associated with. The workaround is to analyze the client events and search
+    # for their last association event, where the channel association is mentioned.
+    # The achilles heel of the process is that clients associated for more than
+    # the searched time span will not return an associated channel.
+    # Increasing the time span will increase the running time of the code, while
+    # decreasing it will increase the number of unknown clients.
     channel = '666'
     for event in events:
         if 'channel' in event['details'].keys():
@@ -145,7 +152,7 @@ if __name__ == '__main__':
     There are {clients_2_num} clients in 2.4GHz = {clients_2_percent} %.
     There are {clients_5_num} clients in 5GHz = {clients_5_percent} %.
     There are {clients_error_num} channel unknown = {clients_error_percent} %.
-    
+
     ''' )
 
     input('Press any key to get a list of 5GHz capable clients on 2.4GHz... ')
@@ -167,4 +174,3 @@ if __name__ == '__main__':
         if client['description'] is None:
             client['description'] = 'No description'
         print('{:<25} {:<18} {:<20}'.format(client['ssid'], client['ip'], client['description']))
-        
