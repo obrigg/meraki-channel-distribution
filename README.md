@@ -1,5 +1,5 @@
 # Meraki Wireless Clients Distribution
-
+[![published](https://static.production.devnetcloud.com/codeexchange/assets/images/devnet-published.svg)](https://developer.cisco.com/codeexchange/github/repo/obrigg/meraki-channel-distribution)
 ### The Challenge
 
 The year is 2020. And yet some of our wireless clients are still connected to the wireless network on the 2.4GHz spectrum which cannot provide them the performance they are looking for.
