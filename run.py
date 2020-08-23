@@ -150,55 +150,60 @@ if __name__ == '__main__':
     clients_2_num = len(clients_2)
     clients_5_num = len(clients_5)
     clients_error_num = len(clients_error)
-    clients_2_percent = round(len(clients_2)*100/wirelessClientCount)
-    clients_5_percent = round(len(clients_5)*100/wirelessClientCount)
-    clients_error_percent = round(len(clients_error)*100/wirelessClientCount)
-
-    table = Table(title="Wireless Clients Summary")
-    table.add_column("Total Clients", justify="center", style="cyan", no_wrap=True)
-    table.add_column("5GHz Clients", justify="center", style="cyan", no_wrap=True)
-    table.add_column("2.4GHz Clients", justify="center", style="cyan", no_wrap=True)
-    table.add_column("Unknown Channel", justify="center", style="cyan", no_wrap=True)
     #
-    table.add_row(str(wirelessClientCount), str(clients_5_num), str(clients_2_num), str(clients_error_num))
-    table.add_row("---", "---", "---", "---")
-    table.add_row("100 % ", str(clients_5_percent) + " % ", str(clients_2_percent) + " % ", str(clients_error_percent) + " % ")
-    #
-    console = Console()
-    console.print(table)
-
-    if len(clients_5_on_2) > 0:
-        input('\n\nPress any key to get a list of 5GHz capable clients on 2.4GHz...\n')
+    if wirelessClientCount > 0:
+        clients_2_percent = round(len(clients_2)*100/wirelessClientCount)
+        clients_5_percent = round(len(clients_5)*100/wirelessClientCount)
+        clients_error_percent = round(len(clients_error)*100/wirelessClientCount)
         #
-        table = Table(title="5GHz capable clients on 2.4GHz")
-        table.add_column("SSID", justify="left", style="red", no_wrap=True)
-        table.add_column("IP Address", justify="left", no_wrap=True)
-        table.add_column("Description", justify="left", style="red", no_wrap=True)
+        table = Table(title="Wireless Clients Summary")
+        table.add_column("Total Clients", justify="center", style="cyan", no_wrap=True)
+        table.add_column("5GHz Clients", justify="center", style="cyan", no_wrap=True)
+        table.add_column("2.4GHz Clients", justify="center", style="cyan", no_wrap=True)
+        table.add_column("Unknown Channel", justify="center", style="cyan", no_wrap=True)
         #
-        for client in clients_5_on_2:
-            if client['ip'] is None:
-                client['ip'] = 'No IP'
-            if client['description'] is None:
-                client['description'] = 'No description'
-            table.add_row(client['ssid'], client['ip'], client['description'])
+        table.add_row(str(wirelessClientCount), str(clients_5_num), str(clients_2_num), str(clients_error_num))
+        table.add_row("---", "---", "---", "---")
+        table.add_row("100 % ", str(clients_5_percent) + " % ", str(clients_2_percent) + " % ", str(clients_error_percent) + " % ")
         #
         console = Console()
         console.print(table)
 
-if clients_error_num > 0:
-    input('\n\nPress any key to get a list of the unknown clients... \n')
-    #
-    table = Table(title="Unknown clients")
-    table.add_column("SSID", justify="left", style="yellow", no_wrap=True)
-    table.add_column("IP Address", justify="left", style="yellow", no_wrap=True)
-    table.add_column("Description", justify="left", style="yellow", no_wrap=True)
-    #
-    for client in clients_error:
-        if client['ip'] is None:
-            client['ip'] = 'No IP'
-        if client['description'] is None:
-            client['description'] = 'No description'
-        table.add_row(client['ssid'], client['ip'], client['description'])
-    #
-    console = Console()
-    console.print(table)
+        if len(clients_5_on_2) > 0:
+            input('\n\nPress any key to get a list of 5GHz capable clients on 2.4GHz...\n')
+            #
+            table = Table(title="5GHz capable clients on 2.4GHz")
+            table.add_column("SSID", justify="left", style="red", no_wrap=True)
+            table.add_column("IP Address", justify="left", no_wrap=True)
+            table.add_column("Description", justify="left", style="red", no_wrap=True)
+            #
+            for client in clients_5_on_2:
+                if client['ip'] is None:
+                    client['ip'] = 'No IP'
+                if client['description'] is None:
+                    client['description'] = 'No description'
+                table.add_row(client['ssid'], client['ip'], client['description'])
+            #
+            console = Console()
+            console.print(table)
+
+        if clients_error_num > 0:
+            input('\n\nPress any key to get a list of the unknown clients... \n')
+            #
+            table = Table(title="Unknown clients")
+            table.add_column("SSID", justify="left", style="yellow", no_wrap=True)
+            table.add_column("IP Address", justify="left", style="yellow", no_wrap=True)
+            table.add_column("Description", justify="left", style="yellow", no_wrap=True)
+            #
+            for client in clients_error:
+                if client['ip'] is None:
+                    client['ip'] = 'No IP'
+                if client['description'] is None:
+                    client['description'] = 'No description'
+                table.add_row(client['ssid'], client['ip'], client['description'])
+            #
+            console = Console()
+            console.print(table)
+    else:
+        print("\n\n[bold white]No wireless clients on this network.\n\n")
+        
