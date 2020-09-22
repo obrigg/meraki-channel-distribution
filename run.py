@@ -22,9 +22,16 @@ def SelectNetwork():
         counter+=1
     console = Console()
     console.print(table)
-    selected = input('\nKindly select the organization ID you would like to query: ')
-    if int(selected) not in range(0,counter):
-        raise Exception ('\tInvalid Organization Number')
+    isOrgDone = False
+    while isOrgDone == False:
+        selected = input('\nKindly select the organization ID you would like to query: ')
+        try:
+            if int(selected) in range(0,counter):
+                isOrgDone = True
+            else:
+                print('\t[bold red]Invalid Organization Number\n')
+        except:
+            print('\t[bold red]Invalid Organization Number\n')
     # Fetch and select the network within the organization
     print('\n\nFetching networks...\n')
     networks = meraki.networks.get_organization_networks({'organization_id': organizations[int(selected)]['id']})
@@ -39,9 +46,16 @@ def SelectNetwork():
         counter += 1
     console = Console()
     console.print(table)
-    selected = input('\nKindly select the network # you would like to query: ')
-    if int(selected) not in range(0,counter):
-        raise Exception ('\nInvalid Network #')
+    isNetDone = False
+    while isNetDone == False:
+        selected = input('\nKindly select the Network you would like to query: ')
+        try:
+            if int(selected) in range(0,counter):
+                isNetDone = True
+            else:
+                print('\t[bold red]Invalid Organization Number\n')
+        except:
+            print('\t[bold red]Invalid Organization Number\n')
     return(networks[int(selected)]['id'])
 
 def GetAllClients():
