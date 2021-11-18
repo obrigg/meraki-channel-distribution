@@ -2,7 +2,7 @@ import time
 import os
 from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 from meraki_sdk.exceptions.api_exception import APIException
-from rich import print
+from rich import print as pp
 from rich.console import Console
 from rich.table import Table
 from rich.progress import track
