@@ -1,7 +1,6 @@
 import time
 import os
-from meraki_sdk.meraki_sdk_client import MerakiSdkClient
-from meraki_sdk.exceptions.api_exception import APIException
+import meraki
 from rich import print as pp
 from rich.console import Console
 from rich.table import Table
@@ -10,7 +9,7 @@ from rich.progress import track
 def SelectNetwork():
     # Fetch and select the organization
     print('\n\nFetching organizations...\n')
-    organizations = meraki.organizations.get_organizations()
+    organizations = dashboard.organizations.getOrganizations()
     ids = []
     table = Table(title="Meraki Organizations")
     table.add_column("Organization #", justify="left", style="cyan", no_wrap=True)
@@ -34,7 +33,7 @@ def SelectNetwork():
             print('\t[bold red]Invalid Organization Number\n')
     # Fetch and select the network within the organization
     print('\n\nFetching networks...\n')
-    networks = meraki.networks.get_organization_networks({'organization_id': organizations[int(selected)]['id']})
+    networks = dashboard.organizations.getOrganizationNetworks(organizations[int(selected)]['id'])
     ids = []
     table = Table(title="Available Networks")
     table.add_column("Network #", justify="left", style="green", no_wrap=True)
@@ -58,28 +57,7 @@ def SelectNetwork():
             print('\t[bold red]Invalid Organization Number\n')
     return(networks[int(selected)]['id'])
 
-def GetAllClients():
-    # Fetch {per_page} clients in the past 1 hour (3,600 seconds)
-    allClients = []
-    per_page = 100
-    isLastPage = False
-    clients_options = {
-    'network_id': NETWORK_ID,
-    'timespan': 3600,
-    'per_page': per_page
-    }
-    while isLastPage == False:
-        newClients = meraki.clients.get_network_clients(clients_options)
-        allClients += newClients
-        if len(newClients) < per_page:
-            isLastPage = True
-        else:
-            if isDebug:
-                print('Received %s clients so far. Fetching more...' % len(allClients))
-            clients_options['starting_after'] = newClients[per_page - 1]['id']
-    return(allClients)
 
-def AnalyzeClient(client):
     if client['status'] and client['ssid'] != None:
         events = GetClientEvents(client)
         channel = GetChannel(client, events)
@@ -88,6 +66,7 @@ def AnalyzeClient(client):
             if isDebug:
                 print("\t[yellow]Error: Not sure which channel client %s (ID: %s) is connected to[/yellow]" % (str(client['description']), client['id']))
         elif int(channel) < 15:
+            client_capabilities = dashboard.client.getNetworkClient(NETWORK_ID, client['id'])
             client_capabilities = meraki.clients.get_network_client({'network_id': NETWORK_ID, 'client_id': client['id']})['wirelessCapabilities']
             if '5' in client_capabilities:
                 clients_5_on_2.append(client)
@@ -103,7 +82,6 @@ def AnalyzeClient(client):
     elif isDebug:
         print(f'\tClient %s is not a wireless client. Skipping...\n' % str(client['description']))
 
-def GetClientEvents(client):
     allEvents = []
     per_page = 100
     clientEvents_options = {
@@ -129,7 +107,6 @@ def GetClientEvents(client):
         print(f'\tClient: %s has a total of %s events' % (str(client['description']), len(allEvents)))
     return(allEvents)
 
-def GetChannel(client, events):
     # The dashboard API does not have a direct query to the channel a client is
     # associated with. The workaround is to analyze the client events and search
     # for their last association event, where the channel association is mentioned.
@@ -144,41 +121,82 @@ def GetChannel(client, events):
     return(channel)
 
 if __name__ == '__main__':
-    # Debug mode
-    isDebug = False
     # Initializing Meraki SDK
-    meraki = MerakiSdkClient(os.environ.get('MERAKI_KEY'))
+    dashboard = meraki.DashboardAPI(output_log=False, suppress_logging=True)
     NETWORK_ID = SelectNetwork()
 
-    clients_2 = []
-    clients_5 = []
-    clients_5_on_2 = []
-    clients_error = []
-    allClients = GetAllClients()
-    print('\nReceived a total of %s clients\n' % len(allClients))
-    for step in track(range(len(allClients))):
-        AnalyzeClient(allClients[step])
+    print("Fetching association events...")
+    association_events = dashboard.networks.getNetworkEvents(NETWORK_ID, includedEventTypes=["association"], perPage=1000, total_pages=50)
+    results = {}
+    """
+    results format:
+    {client_id1: {'name': 'client1', '2.4GHz': True, '5GHz': True, 'SSID': 'SSID1' ,5GHz_capable: True},
+     client_id2: {'name': 'client2', '2.4GHz': False, '5GHz': True, 'SSID': 'SSID1' ,5GHz_capable: True},
+        ...}
+    """
+    # Analyzing the association events, to understand which clients are connected to 2.4GHz channels and which to 5GHz channels.
+    for step in track(range(len(association_events['events'])), description='Analyzing association events...'):
+        event = association_events['events'][step]
+        # Client in 2.4GHz
+        if int(event['eventData']['channel']) < 13:
+            if event['clientId'] in results.keys():
+                results[event['clientId']]['2.4GHz'] = True
+            else:
+                results[event['clientId']] = {'2.4GHz': True, '5GHz': False, 'SSID': event['ssidName']}
+        # Client in 5GHz
+        elif int(event['eventData']['channel']) > 13:
+            if event['clientId'] in results.keys():
+                results[event['clientId']]['5GHz'] = True
+            else:
+                results[event['clientId']] = {'2.4GHz': False, '5GHz': True, 'SSID': event['ssidName']}
+        # Client unknown
+        else:
+            print(f"Error processing client {event['clientId']}")
+
+    # Adding client capabilities
+    client_list = list(results.keys())
+    for step in track(range(len(client_list)), description='Adding client capabilities...'):
+        client = client_list[step]
+        try:
+            client_details = dashboard.networks.getNetworkClient(NETWORK_ID, clientId=client)
+            client_capabilities = client_details['wirelessCapabilities']
+            results[client]['name'] = client_details['description']
+        except:
+            client_capabilities = "Unknown"
+            results[client]['name'] = "Unknown"
+            print(f"Error processing client {client}")
+        if '5' in client_capabilities:
+            results[client]['5GHz_capable'] = True
+        elif '2.4' in client_capabilities:
+            results[client]['2.4GHz_capable'] = True
+            results[client]['5GHz_capable'] = False
+        else:
+            results[client]['5GHz_capable'] = False
+            results[client]['2.4GHz_capable'] = False
 
     # Summarize the numbers
-    wirelessClientCount = len(clients_5) + len(clients_2) + len(clients_error)
-    clients_2_num = len(clients_2)
-    clients_5_num = len(clients_5)
-    clients_error_num = len(clients_error)
+    wirelessClientCount = len(results)
+    clients_2_only = [client for client in results if results[client]['2.4GHz'] == True and results[client]['5GHz'] == False]
+    clients_5_only = [client for client in results if results[client]['5GHz'] == True and results[client]['2.4GHz'] == False]
+    clients_error = [client for client in results if results[client]['5GHz'] == False and results[client]['2.4GHz'] == False]
+    clients_5_on_2 = [client for client in results if results[client]['2.4GHz'] == True and results[client]['5GHz_capable'] == True]
     #
     if wirelessClientCount > 0:
-        clients_2_percent = round(len(clients_2)*100/wirelessClientCount)
-        clients_5_percent = round(len(clients_5)*100/wirelessClientCount)
+        clients_2_percent = round(len(clients_2_only)*100/wirelessClientCount)
+        clients_5_percent = round(len(clients_5_only)*100/wirelessClientCount)
+        clients_5_on_2_percent = round(len(clients_5_on_2)*100/wirelessClientCount)
         clients_error_percent = round(len(clients_error)*100/wirelessClientCount)
         #
         table = Table(title="Wireless Clients Summary")
         table.add_column("Total Clients", justify="center", style="cyan", no_wrap=True)
-        table.add_column("5GHz Clients", justify="center", style="cyan", no_wrap=True)
-        table.add_column("2.4GHz Clients", justify="center", style="cyan", no_wrap=True)
-        table.add_column("Unknown Channel", justify="center", style="cyan", no_wrap=True)
+        table.add_column("5GHz Only Clients", justify="center", style="cyan", no_wrap=True)
+        table.add_column("2.4GHz Only Clients", justify="center", style="cyan", no_wrap=True)
+        table.add_column("2.4GHz + 5GHz Clients", justify="center", style="cyan", no_wrap=True)
+        table.add_column("Unknown", justify="center", style="cyan", no_wrap=True)
         #
-        table.add_row(str(wirelessClientCount), str(clients_5_num), str(clients_2_num), str(clients_error_num))
+        table.add_row(str(wirelessClientCount), str(len(clients_5_only)), str(len(clients_2_only)), str(len(clients_5_on_2)), str(len(clients_error)))
         table.add_row("---", "---", "---", "---")
-        table.add_row("100 % ", str(clients_5_percent) + " % ", str(clients_2_percent) + " % ", str(clients_error_percent) + " % ")
+        table.add_row("100 % ", str(clients_5_percent) + " % ", str(clients_2_percent) + " % ", str(clients_5_on_2_percent) + " % ", str(clients_error_percent) + " % ")
         #
         console = Console()
         console.print(table)
@@ -188,36 +206,12 @@ if __name__ == '__main__':
             #
             table = Table(title="5GHz capable clients on 2.4GHz")
             table.add_column("SSID", justify="left", style="red", no_wrap=True)
-            table.add_column("IP Address", justify="left", no_wrap=True)
             table.add_column("Description", justify="left", style="red", no_wrap=True)
             #
             for client in clients_5_on_2:
-                if client['ip'] is None:
-                    client['ip'] = 'No IP'
-                if client['description'] is None:
-                    client['description'] = 'No description'
-                table.add_row(client['ssid'], client['ip'], client['description'])
+                if results[client]['name'] is None:
+                    results[client]['name'] = 'No name'
+                table.add_row(results[client]['SSID'], results[client]['name'])
             #
             console = Console()
             console.print(table)
-
-        if clients_error_num > 0:
-            input('\n\nPress any key to get a list of the unknown clients... \n')
-            #
-            table = Table(title="Unknown clients")
-            table.add_column("SSID", justify="left", style="yellow", no_wrap=True)
-            table.add_column("IP Address", justify="left", style="yellow", no_wrap=True)
-            table.add_column("Description", justify="left", style="yellow", no_wrap=True)
-            #
-            for client in clients_error:
-                if client['ip'] is None:
-                    client['ip'] = 'No IP'
-                if client['description'] is None:
-                    client['description'] = 'No description'
-                table.add_row(client['ssid'], client['ip'], client['description'])
-            #
-            console = Console()
-            console.print(table)
-    else:
-        print("\n\n[bold white]No wireless clients on this network.\n\n")
-        
