@@ -63,9 +63,17 @@ if __name__ == '__main__':
     NETWORK_ID = SelectNetwork()
 
     print("Fetching association events...")
-    start_time = datetime.now() - timedelta(days=2) # Fetching association events for the last 2 days
-    association_events = dashboard.networks.getNetworkEvents(NETWORK_ID, productType="wireless", 
-        includedEventTypes=["association"], perPage=1000, total_pages=50, startingAfter=start_time.isoformat())
+    start_time = (datetime.now() - timedelta(days=2)).isoformat() # Fetching association events for the last 2 days
+    is_done = False
+    association_events = []
+    while is_done == False:
+        events = dashboard.networks.getNetworkEvents(NETWORK_ID, productType="wireless", 
+            includedEventTypes=["association"], perPage=1000, startingAfter=start_time)
+        association_events += events['events']
+        if len(events['events']) < 1000:
+            is_done = True
+        else:
+            start_time = events['pageEndAt']
     results = {}
     """
     results format:
@@ -74,8 +82,8 @@ if __name__ == '__main__':
         ...}
     """
     # Analyzing the association events, to understand which clients are connected to 2.4GHz channels and which to 5GHz channels.
-    for step in track(range(len(association_events['events'])), description='Analyzing association events...'):
-        event = association_events['events'][step]
+    for step in track(range(len(association_events)), description='Analyzing association events...'):
+        event = association_events[step]
         # Client in 2.4GHz
         if int(event['eventData']['channel']) < 13:
             if event['clientId'] in results.keys():
@@ -141,13 +149,12 @@ if __name__ == '__main__':
             input('\n\nPress any key to get a list of 5GHz capable clients on 2.4GHz...\n')
             #
             table = Table(title="5GHz capable clients on 2.4GHz")
+            table.add_column("Client ID", justify="left", style="red", no_wrap=True)
             table.add_column("SSID", justify="left", style="red", no_wrap=True)
             table.add_column("Description", justify="left", style="red", no_wrap=True)
             #
             for client in clients_5_on_2:
-                if results[client]['name'] is None:
-                    results[client]['name'] = 'No name'
-                table.add_row(results[client]['SSID'], results[client]['name'])
+                table.add_row(client, results[client]['SSID'], results[client].get('name', 'Unknown'))
             #
             console = Console()
             console.print(table)
