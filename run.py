@@ -5,10 +5,14 @@ from rich.console import Console
 from rich.table import Table
 from rich.progress import track
 
+def organization_name(organization: dict) -> str:
+    return organization['name']
+
 def SelectNetwork():
     # Fetch and select the organization
     print('\n\nFetching organizations...\n')
     organizations = dashboard.organizations.getOrganizations()
+    organizations.sort(key=organization_name)
     ids = []
     table = Table(title="Meraki Organizations")
     table.add_column("Organization #", justify="left", style="cyan", no_wrap=True)
