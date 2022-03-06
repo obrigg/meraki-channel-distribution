@@ -73,7 +73,7 @@ def SelectNetwork():
 async def main():
     async with meraki.aio.AsyncDashboardAPI(
         output_log=False, 
-        suppress_logging=False, 
+        suppress_logging=True, 
         maximum_concurrent_requests=5,
         wait_on_rate_limit=True,
         nginx_429_retry_wait_time=2,
