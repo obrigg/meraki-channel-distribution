@@ -5,14 +5,12 @@ from rich.console import Console
 from rich.table import Table
 from rich.progress import track
 
-def return_name(dictionary: dict) -> str:
-    return dictionary['name']
 
 def SelectNetwork():
     # Fetch and select the organization
     print('\n\nFetching organizations...\n')
     organizations = dashboard.organizations.getOrganizations()
-    organizations.sort(key=return_name)
+    organizations.sort(key=lambda x: x['name'])
     ids = []
     table = Table(title="Meraki Organizations")
     table.add_column("Organization #", justify="left", style="cyan", no_wrap=True)
@@ -37,7 +35,7 @@ def SelectNetwork():
     # Fetch and select the network within the organization
     print('\n\nFetching networks...\n')
     networks = dashboard.organizations.getOrganizationNetworks(organizations[int(selected)]['id'])
-    networks.sort(key=return_name)
+    organizations.sort(key=lambda x: x['name'])
     ids = []
     table = Table(title="Available Networks")
     table.add_column("Network #", justify="left", style="green", no_wrap=True)
