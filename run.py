@@ -35,7 +35,7 @@ def SelectNetwork():
     # Fetch and select the network within the organization
     print('\n\nFetching networks...\n')
     networks = dashboard.organizations.getOrganizationNetworks(organizations[int(selected)]['id'])
-    organizations.sort(key=lambda x: x['name'])
+    networks.sort(key=lambda x: x['name'])
     ids = []
     table = Table(title="Available Networks")
     table.add_column("Network #", justify="left", style="green", no_wrap=True)
