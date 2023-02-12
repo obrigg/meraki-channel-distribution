@@ -161,7 +161,16 @@ async def main():
                 #
                 console = Console()
                 console.print(table)
-
+        # export to a CSV file
+        data = "Client type,SSID,Client ID\n"
+        for client in clients_2_only:
+            data += f"2.4GHz Only,{results[client]['SSID']},{results[client].get('name', 'Unknown')}\n"
+        for client in clients_5_only:
+            data += f"5GHz Only,{results[client]['SSID']},{results[client].get('name', 'Unknown')}\n"
+        for client in clients_5_on_2:
+            data += f"2.4GHz + 5GHz Clients,{results[client]['SSID']},{results[client].get('name', 'Unknown')}\n" 
+        with open("results.csv", "w") as f:
+            f.write(data)
 
 async def get_events(aiomeraki: meraki.aio.AsyncDashboardAPI, start_time: str, serial: str):
     association_events = []
