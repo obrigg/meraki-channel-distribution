@@ -24,7 +24,7 @@ In addition, it will mark 5GHz-capable clients that are connected to 2.4GHz for 
 
 #### Storing the Meraki API Key as an environment variable
 Once the API key is obtained, you'll need to store the Meraki dashboard API key as an environment variable:
-`export MERAKI_KEY = <YOUR MERAKI API KEY>`
+`export MERAKI_DASHBOARD_API_KEY = <YOUR MERAKI API KEY>`
 and install the Meraki SDK via `pip install -r requirements.txt`
 
 Now you're ready. Good luck!
